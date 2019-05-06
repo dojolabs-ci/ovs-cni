@@ -18,7 +18,7 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/version"
 
-	"github.com/kubevirt/ovs-cni/pkg/plugin"
+	"github.com/dojolabs-ci/ovs-cni/pkg/plugin"
 )
 
 func main() {

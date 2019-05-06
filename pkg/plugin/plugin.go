@@ -48,6 +48,7 @@ type EnvArgs struct {
 	types.CommonArgs
 	MAC     types.UnmarshallableString `json:"mac,omitempty"`
 	OvnPort types.UnmarshallableString `json:"ovnPort,omitempty"`
+	PORTID  types.UnmarshallableString `json:"portid,omitempty"`
 }
 
 func init() {
@@ -189,7 +190,7 @@ func getBridgeName(bridgeName, ovnPort string) (string, error) {
 	return "", fmt.Errorf("failed to get bridge name")
 }
 
-func attachIfaceToBridge(hostIfaceName string, contIfaceName string, brName string, vlanTag *uint, contNetnsPath string, ovnPortName string) error {
+func attachIfaceToBridge(hostIfaceName string, contIfaceName string, brName string, vlanTag *uint, contNetnsPath string, ovnPortName string, portid string) error {
 	// Set external IDs so we are able to find and remove the port from OVS
 	// database when CNI DEL is called.
 	command := []string{
@@ -203,7 +204,9 @@ func attachIfaceToBridge(hostIfaceName string, contIfaceName string, brName stri
 	if ovnPortName != "" {
 		command = append(command, "--", "set", "Interface", hostIfaceName, fmt.Sprintf("external-ids:iface-id=%s", ovnPortName))
 	}
-
+	if portid != "" {
+		command = append(command, "--", "set", "Interface", hostIfaceName, fmt.Sprintf("ofport_request=%s", portid))
+	}
 	output, err := exec.Command("ovs-vsctl", command...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to attach veth to bridge: %s", string(output[:]))
@@ -240,9 +243,11 @@ func CmdAdd(args *skel.CmdArgs) error {
 
 	var mac string
 	var ovnPort string
+	var portid string
 	if envArgs != nil {
 		mac = string(envArgs.MAC)
 		ovnPort = string(envArgs.OvnPort)
+		portid = string(envArgs.PORTID)
 	}
 
 	if err := assertOvsAvailable(); err != nil {
@@ -275,7 +280,7 @@ func CmdAdd(args *skel.CmdArgs) error {
 		return err
 	}
 
-	if err = attachIfaceToBridge(hostIface.Name, contIface.Name, bridgeName, netconf.VlanTag, args.Netns, ovnPort); err != nil {
+	if err = attachIfaceToBridge(hostIface.Name, contIface.Name, bridgeName, netconf.VlanTag, args.Netns, ovnPort, portid); err != nil {
 		return err
 	}
 
